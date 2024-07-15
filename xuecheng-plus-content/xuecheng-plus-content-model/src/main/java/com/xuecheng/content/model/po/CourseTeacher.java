@@ -1,6 +1,7 @@
 package com.xuecheng.content.model.po;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.xuecheng.base.exception.ValidationGroups;
 import lombok.Data;
 
 import javax.validation.constraints.NotEmpty;
@@ -34,7 +35,8 @@ public class CourseTeacher implements Serializable {
     /**
      * 教师标识
      */
-    @NotEmpty(message = "教师姓名不能为空")
+    @NotEmpty(groups = {ValidationGroups.Insert.class},message ="教师名字不能为空 from validation ")
+    @NotEmpty(groups = {ValidationGroups.Update.class},message ="教师名字不能为空 from validation ")
     private String teacherName;
 
     /**

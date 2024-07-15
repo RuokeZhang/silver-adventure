@@ -32,7 +32,7 @@ public class CourseTeacherServiceTests {
     @Test
     public void testUpdateTeacher() {
         CourseTeacher courseTeacher=new CourseTeacher();
-        courseTeacher.setTeacherName("zhang");
+        courseTeacher.setTeacherName("zhag");
         courseTeacher.setPosition("大荒地");
         courseTeacher.setId(8L);
         CourseTeacher newTeacher=courseTeacherService.saveCourseTeacher(courseTeacher);
