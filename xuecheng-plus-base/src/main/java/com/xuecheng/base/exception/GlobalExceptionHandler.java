@@ -19,6 +19,7 @@ import java.util.List;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler(XueChengPlusException.class)//捕获异常的范围
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public RestErrorResponse customException(XueChengPlusException e){
         //记录异常
         log.error("【系统异常】{}",e.getErrMessage(),e);
