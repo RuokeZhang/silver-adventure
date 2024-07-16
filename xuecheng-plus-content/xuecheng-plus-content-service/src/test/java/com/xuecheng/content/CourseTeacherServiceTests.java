@@ -23,7 +23,7 @@ public class CourseTeacherServiceTests {
         CourseTeacher courseTeacher=new CourseTeacher();
         courseTeacher.setTeacherName("hou");
         courseTeacher.setPosition("大王");
-        CourseTeacher newTeacher=courseTeacherService.saveCourseTeacher(courseTeacher);
+        CourseTeacher newTeacher=courseTeacherService.addCourseTeacher(courseTeacher);
         CourseTeacher returnedTeacher=courseTeacherService.getCourseTeacher(newTeacher.getId());
         Assertions.assertNotNull(returnedTeacher);
         System.out.println(returnedTeacher);
@@ -35,7 +35,7 @@ public class CourseTeacherServiceTests {
         courseTeacher.setTeacherName("zhag");
         courseTeacher.setPosition("大荒地");
         courseTeacher.setId(8L);
-        CourseTeacher newTeacher=courseTeacherService.saveCourseTeacher(courseTeacher);
+        CourseTeacher newTeacher=courseTeacherService.updateCourseTeacher(courseTeacher);
         CourseTeacher returnedTeacher=courseTeacherService.getCourseTeacher(newTeacher.getId());
         Assertions.assertNotNull(returnedTeacher);
         System.out.println(returnedTeacher);
