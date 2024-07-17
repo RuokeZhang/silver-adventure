@@ -10,6 +10,7 @@ spring:
         group: xuecheng-plus-project
       config:
         namespace: dev
+        server-addr: 127.0.0.1:8848
         group: xuecheng-plus-project
         file-extension: yaml
         refresh-enabled: true
