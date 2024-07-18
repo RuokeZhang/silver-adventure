@@ -6,10 +6,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * @author Mr.M
+ * @author Ruoke Zhang
  * @version 1.0
  * @description TODO
- * @date 2023/2/17 15:00
+ * @date 2024/7/17 20:00
  */
 @Configuration
 public class MinioConfig {
