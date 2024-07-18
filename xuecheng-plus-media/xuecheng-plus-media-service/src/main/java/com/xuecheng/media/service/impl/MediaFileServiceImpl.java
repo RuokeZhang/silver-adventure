@@ -17,7 +17,6 @@ import io.minio.MinioClient;
 import io.minio.UploadObjectArgs;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,17 +26,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
 /**
- * @author Mr.M
+ * @author Ruoke Zhang
  * @version 1.0
  * @description TODO
- * @date 2022/9/10 8:58
+ * @date 2024/07/18 16:48
  */
 @Slf4j
 @Service
@@ -51,8 +49,9 @@ public class MediaFileServiceImpl implements MediaFileService {
 
     @Autowired
     MediaFileService currentProxy;
+    //ensure it's a proxy, so we can set its function as a transaction
 
-    //存储普通文件
+    //存储普通文件，从配置里面拿到 bucket name
     @Value("${minio.bucket.files}")
     private String bucket_mediafiles;
 
@@ -80,48 +79,6 @@ public class MediaFileServiceImpl implements MediaFileService {
 
     }
 
-    //根据扩展名获取mimeType
-    private String getMimeType(String extension){
-        if(extension == null){
-            extension = "";
-        }
-        //根据扩展名取出mimeType
-        ContentInfo extensionMatch = ContentInfoUtil.findExtensionMatch(extension);
-        String mimeType = MediaType.APPLICATION_OCTET_STREAM_VALUE;//通用mimeType，字节流
-        if(extensionMatch!=null){
-            mimeType = extensionMatch.getMimeType();
-        }
-        return mimeType;
-
-    }
-
-    /**
-     * 将文件上传到minio
-     * @param localFilePath 文件本地路径
-     * @param mimeType 媒体类型
-     * @param bucket 桶
-     * @param objectName 对象名
-     * @return
-     */
-    public boolean addMediaFilesToMinIO(String localFilePath,String mimeType,String bucket, String objectName){
-        try {
-            UploadObjectArgs uploadObjectArgs = UploadObjectArgs.builder()
-                    .bucket(bucket)//桶
-                    .filename(localFilePath) //指定本地文件路径
-                    .object(objectName)//对象名 放在子目录下
-                    .contentType(mimeType)//设置媒体文件类型
-                    .build();
-            //上传文件
-            minioClient.uploadObject(uploadObjectArgs);
-            log.debug("上传文件到minio成功,bucket:{},objectName:{},错误信息:{}",bucket,objectName);
-            return true;
-        } catch (Exception e) {
-           e.printStackTrace();
-           log.error("上传文件出错,bucket:{},objectName:{},错误信息:{}",bucket,objectName,e.getMessage());
-        }
-        return false;
-    }
-
     //获取文件默认存储目录路径 年/月/日
     private String getDefaultFolderPath() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
@@ -138,55 +95,75 @@ public class MediaFileServiceImpl implements MediaFileService {
             return null;
         }
     }
+    //根据扩展名获得 mimeType
+    public String getMimeType(String extension){
+        if (extension==null){
+            extension="";
+        }
+        ContentInfo extensionMatch = ContentInfoUtil.findExtensionMatch("extension");
+        String mimeType = MediaType.APPLICATION_OCTET_STREAM_VALUE;//通用mimeType，字节流
+        if(extensionMatch!=null){
+            mimeType = extensionMatch.getMimeType();
+        }
+        return mimeType;
+    }
+
+    //将文件上传到 minio
+    public boolean upLoadFileToMinIO(String localFilePath,String mimeType,String bucket, String objectName){
+        //上传文件的参数信息
+        try {
+            UploadObjectArgs uploadObjectArgs = UploadObjectArgs.builder()
+                    .bucket(bucket)
+                    .object(objectName)//添加子目录
+                    .filename(localFilePath)//本地文件路径
+                    //.contentType("image/jpg")//默认根据扩展名确定文件内容类型，也可以指定
+                    .contentType(mimeType)
+                    .build();
+            //上传文件
+            minioClient.uploadObject(uploadObjectArgs);
+            log.debug("successfully uploaded file to MinIO, bucket:{}, objectName:{}", bucket, objectName);
+            return true;
+        }catch (Exception e){
+            e.printStackTrace();
+            log.error("上传文件出错, bucket:{}, objectName:{}, 错误信息:{}", bucket, objectName, e.getMessage());
+        }
+        return false;
+    }
 
     @Override
     public UploadFileResultDto uploadFile(Long companyId, UploadFileParamsDto uploadFileParamsDto, String localFilePath) {
+        //得到文件名
+        String fileName= uploadFileParamsDto.getFilename();
+        //得到扩展名
+        String extension= fileName.substring(fileName.lastIndexOf("."));
 
-        //文件名
-        String filename = uploadFileParamsDto.getFilename();
-        //先得到扩展名
-        String extension = filename.substring(filename.lastIndexOf("."));
-
-        //得到mimeType
         String mimeType = getMimeType(extension);
 
-        //子目录
         String defaultFolderPath = getDefaultFolderPath();
-        //文件的md5值
+        //md5值
         String fileMd5 = getFileMd5(new File(localFilePath));
-        String objectName = defaultFolderPath+fileMd5+extension;
-        //上传文件到minio
-        boolean result = addMediaFilesToMinIO(localFilePath, mimeType, bucket_mediafiles, objectName);
+        String objectName=defaultFolderPath+fileMd5+extension;
+        boolean result=upLoadFileToMinIO(localFilePath, mimeType, bucket_mediafiles, objectName);
         if(!result){
-            XueChengPlusException.cast("上传文件失败");
+            XueChengPlusException.cast("file upload to minio fail");
         }
-        //入库文件信息
-        MediaFiles mediaFiles = currentProxy.addMediaFilesToDb(companyId, fileMd5, uploadFileParamsDto, bucket_mediafiles, objectName);
-        if(mediaFiles==null){
-            XueChengPlusException.cast("文件上传后保存信息失败");
+        //save the file to db, bc this step needs internet, and it may need much time,
+        // so it's not efficient to add @Transcation to the whole func
+        MediaFiles file =currentProxy.addMediaFilesToDb(companyId, fileMd5, uploadFileParamsDto, bucket_mediafiles, objectName);
+        if (file==null){
+            XueChengPlusException.cast("after uploading file to minio, saving file info to db fails");
         }
-        //准备返回的对象
+        //prepare the return object
         UploadFileResultDto uploadFileResultDto = new UploadFileResultDto();
-        BeanUtils.copyProperties(mediaFiles,uploadFileResultDto);
-
+        BeanUtils.copyProperties(uploadFileParamsDto, uploadFileResultDto);
         return uploadFileResultDto;
+
     }
 
 
-    /**
-     * @description 将文件信息添加到文件表
-     * @param companyId  机构id
-     * @param fileMd5  文件md5值
-     * @param uploadFileParamsDto  上传文件的信息
-     * @param bucket  桶
-     * @param objectName 对象名称
-     * @return com.xuecheng.media.model.po.MediaFiles
-     * @author Mr.M
-     * @date 2022/10/12 21:22
-     */
+    @Override
     @Transactional
     public MediaFiles addMediaFilesToDb(Long companyId,String fileMd5,UploadFileParamsDto uploadFileParamsDto,String bucket,String objectName){
-        //将文件信息保存到数据库
         MediaFiles mediaFiles = mediaFilesMapper.selectById(fileMd5);
         if(mediaFiles == null){
             mediaFiles = new MediaFiles();
@@ -212,7 +189,7 @@ public class MediaFileServiceImpl implements MediaFileService {
             //插入数据库
             int insert = mediaFilesMapper.insert(mediaFiles);
             if(insert<=0){
-                log.debug("向数据库保存文件失败,bucket:{},objectName:{}",bucket,objectName);
+                log.debug("fail to save file info to db");
                 return null;
             }
             return mediaFiles;

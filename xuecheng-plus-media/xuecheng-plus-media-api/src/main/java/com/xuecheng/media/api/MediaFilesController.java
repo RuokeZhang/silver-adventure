@@ -18,7 +18,7 @@ import java.io.File;
 import java.io.IOException;
 
 /**
- * @description 媒资文件管理接口
+ * @description Media file Management Interface
  * @author Ruoke Zhang
  * @date 2024/7/17 11:29
  * @version 1.0
@@ -40,7 +40,7 @@ public class MediaFilesController {
 
  }
 
- @ApiOperation("上传图片")
+ @ApiOperation("upload file")
  //consumes = MediaType.MULTIPART_FORM_DATA_VALUE 指定这个方法处理 multipart/form-data 类型的请求，这是上传文件时常用的媒体类型。
  @RequestMapping(value = "/upload/coursefile",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
  //@RequestPart("filedata") 注解表示 filedata 参数将从请求的 multipart/form-data 中提取，代表上传的文件。
@@ -62,7 +62,6 @@ public UploadFileResultDto upload(@RequestPart("filedata")MultipartFile filedata
     //文件路径
      String localFilePath = tempFile.getAbsolutePath();
 
-     //调用service上传图片
      UploadFileResultDto uploadFileResultDto = mediaFileService.uploadFile(companyId, uploadFileParamsDto, localFilePath);
 
      return uploadFileResultDto;

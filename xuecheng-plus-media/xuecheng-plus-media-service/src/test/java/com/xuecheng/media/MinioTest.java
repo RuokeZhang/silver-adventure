@@ -22,7 +22,10 @@ public class MinioTest {
     MinioClient minioClient =
             MinioClient.builder()
                     .endpoint("http://127.0.0.1:9000")
-                    .credentials("minioadmin", "minioadmin")
+                    //.credentials("ruoke", "cxzly8023")
+                    //.credentials("minioadmin", "minioadmin")
+                    //.credentials("Rtf5nJG0VItdHLFN2UtS", "CJeiOQRvbl10AcvzG3CUbKZn5oD2w2DchdCE74Gy")
+                    .credentials("SpdvfWC3aYPZcFdhXhry", "phQ2Gl8hTnmpoExcfUonlbjNl9T0myflw9L1A7pO")
                     .build();
 
     @Test
@@ -37,10 +40,10 @@ public class MinioTest {
             //上传文件的参数信息
             UploadObjectArgs testbucket = UploadObjectArgs.builder()
                     .bucket("testbucket")
-                    .object("test/文件名")//添加子目录
+                    .object("test/filename")//添加子目录
                     .filename("/Users/ruoke/Documents/DSCF7456.JPG")//本地文件路径
                     //.contentType("image/jpg")//默认根据扩展名确定文件内容类型，也可以指定
-                    .contentType("mimeType")
+                    .contentType(mimeType)
                     .build();
             //上传文件
             minioClient.uploadObject(testbucket);
@@ -56,7 +59,7 @@ public class MinioTest {
             //删除文件的参数信息
             RemoveObjectArgs testRemove=RemoveObjectArgs.builder()
                     .bucket("testbucket")
-                    .object("文件名")
+                    .object("test/文件名")
                     .build();
             //上传文件
             minioClient.removeObject(testRemove);
