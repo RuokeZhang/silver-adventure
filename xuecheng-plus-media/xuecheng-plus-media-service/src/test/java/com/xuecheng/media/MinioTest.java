@@ -2,19 +2,19 @@ package com.xuecheng.media;
 
 import com.j256.simplemagic.ContentInfo;
 import com.j256.simplemagic.ContentInfoUtil;
-import io.minio.GetObjectArgs;
-import io.minio.MinioClient;
-import io.minio.RemoveObjectArgs;
-import io.minio.UploadObjectArgs;
+import io.minio.*;
+import io.minio.errors.*;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.junit.Test;
 import org.springframework.http.MediaType;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.FilterInputStream;
+import java.io.*;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 public class MinioTest {
@@ -99,4 +99,42 @@ public class MinioTest {
             System.out.println("查询失败");
         }
     }
+    //upload chunk files to minio
+    @Test
+    public void upload_chunk() throws IOException, ServerException, InsufficientDataException, ErrorResponseException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
+
+        for (int i=0;i<3;i++){
+            UploadObjectArgs testbucket = UploadObjectArgs.builder()
+                    .bucket("testbucket")
+                    .object("chunk/"+i)
+                    .filename("/Users/ruoke/Documents/java_web/chunk/"+i)
+                    .build();
+
+            minioClient.uploadObject(testbucket);
+            System.out.println("uploaded chunk"+i+"successfully");
+        }
+    }
+
+    //use minio's api to merge the chunks
+    @Test
+    public void testMerge() throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
+        /*List<ComposeSource> composeSources=new ArrayList<>();
+            for(int i=0;i<14;i++){
+                ComposeSource source=ComposeSource.builder()
+                        .bucket("testbucket")
+                        .object("chunk/"+i)
+                        .build();
+                composeSources.add(source);
+            }*/
+        List<ComposeSource> sources= Stream.iterate(0, i->++i).limit(3).map(i->ComposeSource.builder().bucket("testbucket")
+                .object("chunk/"+i).build()).collect(Collectors.toList());
+
+        ComposeObjectArgs composeObjectArgs=ComposeObjectArgs.builder()
+                .bucket("testbucket")
+                        .object("merged01.jpg")
+                .sources(sources)
+                                .build();
+        minioClient.composeObject(composeObjectArgs);
+    }
+
 }

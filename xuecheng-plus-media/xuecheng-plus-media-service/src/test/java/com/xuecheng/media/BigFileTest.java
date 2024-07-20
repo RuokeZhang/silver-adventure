@@ -17,8 +17,8 @@ public class BigFileTest {
     public void testChunk() throws IOException {
         File sourceFile=new File("/Users/ruoke/Documents/DSCF7456.JPG");
         String chunkFilePath = "/Users/ruoke/Documents/java_web/chunk/";
-        // 1MB
-        int chunkSize=1024*1024*1;
+        // 5MB
+        int chunkSize=1024*1024*5;
         int chunkNum=(int)Math.ceil(sourceFile.length()*1.0/chunkSize);
         //use stream to read data from the source file, and then write data to the chunks
         RandomAccessFile raf_r=new RandomAccessFile(sourceFile, "r");

@@ -7,12 +7,14 @@ import com.j256.simplemagic.ContentInfoUtil;
 import com.xuecheng.base.exception.XueChengPlusException;
 import com.xuecheng.base.model.PageParams;
 import com.xuecheng.base.model.PageResult;
+import com.xuecheng.base.model.RestResponse;
 import com.xuecheng.media.mapper.MediaFilesMapper;
 import com.xuecheng.media.model.dto.QueryMediaParamsDto;
 import com.xuecheng.media.model.dto.UploadFileParamsDto;
 import com.xuecheng.media.model.dto.UploadFileResultDto;
 import com.xuecheng.media.model.po.MediaFiles;
 import com.xuecheng.media.service.MediaFileService;
+import io.minio.GetObjectArgs;
 import io.minio.MinioClient;
 import io.minio.UploadObjectArgs;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -198,4 +202,90 @@ public class MediaFileServiceImpl implements MediaFileService {
         return mediaFiles;
 
     }
+
+    @Override
+    public RestResponse<Boolean> checkFile(String fileMd5) {
+        MediaFiles mediaFiles = mediaFilesMapper.selectById(fileMd5);
+        // If it's in the DB, check if it's in MinIO
+        if (mediaFiles != null) {
+            String bucket = mediaFiles.getBucket();
+            String filePath = mediaFiles.getFilePath();
+            InputStream stream = null;
+            try {
+                stream = minioClient.getObject(
+                        GetObjectArgs.builder()
+                                .bucket(bucket)
+                                .object(filePath)
+                                .build());
+
+                if (stream != null) {
+                    // File exists in MinIO
+                    return RestResponse.success(true);
+                }
+            } catch (Exception e) {
+                // Log the exception (optional)
+                // e.printStackTrace();
+                return RestResponse.success(false);
+            } finally {
+                // Ensure the InputStream is closed properly
+                if (stream != null) {
+                    try {
+                        stream.close();
+                    } catch (IOException e) {
+                        // Log the exception (optional)
+                        // e.printStackTrace();
+                    }
+                }
+            }
+        }
+        // It doesn't exist in MinIO
+        return RestResponse.success(false);
+    }
+
+    @Override
+    public RestResponse<Boolean> checkChunk(String fileMd5, int chunkIndex) {
+        MediaFiles mediaFiles = mediaFilesMapper.selectById(fileMd5);
+        //get the directory
+        String chunkPath=getChunkFileFolderPath(fileMd5);
+        //get the path
+        String chunkFilePath = chunkPath + chunkIndex;
+        InputStream fileInputStream = null;
+        try {
+            fileInputStream = minioClient.getObject(
+                    GetObjectArgs.builder()
+                            .bucket(bucket_video)
+                            .object(chunkFilePath)
+                            .build());
+
+            if (fileInputStream != null) {
+                return RestResponse.success(true);
+            }
+        } catch (Exception e) {
+
+        }
+        return RestResponse.success(false);
+    }
+
+    @Override
+    public RestResponse uploadChunk(String fileMd5, int chunk, String localChunkFilePath) {
+        //get the directory
+        String chunkFileFolderPath = getChunkFileFolderPath(fileMd5);
+        //get the path
+        String chunkFilePath = chunkFileFolderPath + chunk;
+        //mimeType
+        String mimeType = getMimeType(null);
+        boolean b = upLoadFileToMinIO(localChunkFilePath, mimeType, bucket_video, chunkFilePath);
+        if (!b) {
+            log.debug("upload chunk to minio fails:{}", chunkFilePath);
+            return RestResponse.validfail(false, "upload chunk to minio fails");
+        }
+        log.debug("upload chunk to minio successes:{}",chunkFilePath);
+        return RestResponse.success(true);
+    }
+
+    //the subdirectory has the structure of md5 value's first two chars
+    private String getChunkFileFolderPath(String fileMd5) {
+        return fileMd5.substring(0, 1) + "/" + fileMd5.substring(1, 2) + "/" + fileMd5 + "/" + "chunk" + "/";
+    }
+
 }
