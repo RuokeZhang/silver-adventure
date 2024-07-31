@@ -64,4 +64,8 @@ public interface MediaFileService {
   * @date 2024/7/20 17:38
   */
  public RestResponse uploadChunk(String fileMd5,int chunk,String localChunkFilePath);
+
+ public RestResponse mergeChunk(Long companyId, String fileMd5, int chunk,UploadFileParamsDto uploadFileParamsDto);
 }
+
+
